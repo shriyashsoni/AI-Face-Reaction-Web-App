@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Face Reaction Analyzer</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; }
+        video { border: 2px solid black; border-radius: 10px; display: block; margin: 0 auto; }
+        canvas { position: absolute; top: 0; left: 0; }
+    </style>
+</head>
+<body>
+    <h1>AI Face Reaction Analyzer</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <canvas id="canvas"></canvas>
+    <p id="emotion-output">Detecting...</p>
+    
+    <script>
+        async function startVideo() {
+            const video = document.getElementById("video");
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+                video.srcObject = stream;
+            } catch (error) {
+                console.error("Error accessing webcam:", error);
+            }
+        }
+
+        async function loadModels() {
+            try {
+                await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+                await faceapi.nets.faceExpressionNet.loadFromUri('/models');
+                detectEmotions();
+            } catch (error) {
+                console.error("Error loading models:", error);
+            }
+        }
+
+        async function detectEmotions() {
+            const video = document.getElementById("video");
+            const canvas = document.getElementById("canvas");
+            const context = canvas.getContext("2d");
+            canvas.width = video.width;
+            canvas.height = video.height;
+            
+            setInterval(async () => {
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                
+                if (detections.length > 0) {
+                    const expressions = detections[0].expressions;
+                    const dominantEmotion = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
+                    document.getElementById("emotion-output").innerText = `Emotion: ${dominantEmotion}`;
+                } else {
+                    document.getElementById("emotion-output").innerText = "No face detected";
+                }
+            }, 1000);
+        }
+        
+        startVideo().then(loadModels);
+    </script>
+</body>
+</html>
